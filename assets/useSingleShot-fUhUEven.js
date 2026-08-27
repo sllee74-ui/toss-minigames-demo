@@ -1,0 +1,1 @@
+import{r}from"./index-Fvf3tq23.js";function a(t){const e=r.useRef(!1),s=r.useCallback((...c)=>{e.current||(e.current=!0,t(...c))},[t]),n=r.useCallback(()=>{e.current=!1},[]),u=r.useCallback(()=>e.current,[]);return{fire:s,reset:n,isDone:u}}export{a as u};
