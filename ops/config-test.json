@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "rev": 2,
-  "current": { "values": { "slotCap": 99 } },
+  "rev": 1,
+  "current": { "values": {} },
   "pending": null,
-  "updatedAt": "2026-10-04T19:00:00+09:00"
+  "updatedAt": "2026-10-04T00:00:00+09:00"
 }
