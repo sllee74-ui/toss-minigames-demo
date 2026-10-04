@@ -1,0 +1,42 @@
+# 원격 설정 문서 검증 — 전국민의 미니게임 운영 설정(ops/)이 바뀔 때만 돈다. 데모 본체와 무관.
+# 검증에 실패하면 ops/config*.json을 직전 커밋 상태로 **자동 복구**한다(사람 손이 필요 없게).
+# 앱은 어차피 범위 밖 문서를 통째로 거부하므로(마지막 정상 설정 유지), 복구 전 1~2분의 공백도 무해하다.
+# ⚠️ 원본: toss-minigames/tools/portal-ops/ops-validate.yml — 여기를 직접 고치지 말 것(배포 때 덮어써진다).
+name: ops-validate
+on:
+  push:
+    branches: [main]
+    paths: ['ops/**']
+permissions:
+  contents: write
+concurrency:
+  group: ops-validate
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 설정 문서 검증
+        id: check
+        continue-on-error: true
+        run: node ops/scripts/validate.mjs
+      - name: 직전 정상본으로 자동 복구
+        if: steps.check.outcome == 'failure'
+        run: |
+          git config user.name "ops-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout HEAD~1 -- ops/config.json ops/config-test.json
+          node ops/scripts/validate.mjs --no-rev
+          git commit -m "ops: 검증 실패한 설정 문서를 직전 정상본으로 자동 복구"
+          git push
+      - name: 실패 표시
+        if: steps.check.outcome == 'failure'
+        run: |
+          echo "::error::설정 문서가 검증을 통과하지 못해 직전 정상본으로 되돌렸습니다. 위 '설정 문서 검증' 로그를 확인하세요."
+          exit 1
