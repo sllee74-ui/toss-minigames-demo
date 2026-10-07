@@ -4,20 +4,19 @@
 var PARAMS = [
   { key: "rewardKillSwitch", type: "bool", apply: "instant" },
   { key: "preset", type: "enum", values: ["L", "B", "H"], apply: "day" },
-  { key: "slotCap", type: "int", min: 5, max: 50, apply: "day" },
+  { key: "slotCap", type: "int", min: 50, max: 500, apply: "day" },
   { key: "adsDailyMax", type: "int", min: 5, max: 30, apply: "day" },
   { key: "gamePicksPerDay", type: "int", min: 1, max: 11, apply: "day" },
   { key: "dailySlotsPerDifficulty", type: "int", min: 1, max: 3, apply: "day" },
   { key: "energyTapsToFull", type: "int", min: 3, max: 30, apply: "day" },
   { key: "energyDailyMax", type: "int", min: 0, max: 5, apply: "day" },
-  { key: "lotteryDailyMax", type: "int", min: 0, max: 3, apply: "day" },
-  { key: "attendReward", type: "int", min: 0, max: 5, apply: "day" },
-  { key: "attendStreakBonus", type: "int", min: 0, max: 20, apply: "day" },
-  { key: "notiConsentReward", type: "int", min: 0, max: 30, apply: "day" },
+  { key: "attendReward", type: "int", min: 0, max: 50, apply: "day" },
+  { key: "attendStreakBonus", type: "int", min: 0, max: 200, apply: "day" },
+  { key: "notiConsentReward", type: "int", min: 0, max: 300, apply: "day" },
   { key: "notiTemplateCode", type: "code", pattern: /^[A-Za-z0-9_-]{0,64}$/, apply: "day" },
   { key: "hostShareRate", type: "rate", min: 0.3, max: 0.5, apply: "day" },
-  { key: "minConvertPoint", type: "int", min: 10, max: 100, apply: "day" },
-  { key: "maxBalance", type: "int", min: 500, max: 2e3, apply: "day" }
+  { key: "minConvertPoint", type: "int", min: 100, max: 1e3, apply: "day" },
+  { key: "maxBalance", type: "int", min: 5e3, max: 2e4, apply: "day" }
 ];
 var SPEC = new Map(PARAMS.map((p) => [p.key, p]));
 var INSTANT_KEYS = PARAMS.filter((p) => p.apply === "instant").map((p) => p.key);
@@ -126,70 +125,58 @@ var PORTAL_ENGAGEMENT = {
     // 저녁은 자정을 넘어간다 — end=29(=익일 05시)로 두지 않고 5로 두고, slotOf가 wrap을 처리한다.
     { id: "evening", name: "\uC800\uB141", start: 17, end: 5, emoji: "\u{1F319}" }
   ],
-  // 타임당 15P 소프트 캡 × 3타임 = 일 45P. 액션 시작 시 캡 미만이면 추첨 결과 전액 지급(최대 +9P 초과).
-  slotCap: 15,
-  // 공용 변동 테이블 — 게임 한 판·타임 보너스·에너지 상자가 같은 테이블에서 추첨한다.
+  // 타임당 150코인 소프트 캡 × 3타임 = 일 450코인. 액션 시작 시 캡 미만이면 보상 전액 지급(한 번의 보상만큼 넘칠 수 있음).
+  slotCap: 150,
+  // 공용 고정 보상 — 게임 한 판·타임 보너스·에너지 상자가 같은 금액을 준다.
+  // (구 변동 테이블 평균 1.16/1.54/2.28P × 10을 반올림 — 경제성 동일, 랜덤 제거)
   rewardPresets: {
-    L: [
-      // 저eCPM — EV 1.16P
-      { points: 1, weight: 92 },
-      { points: 2, weight: 6 },
-      { points: 5, weight: 1.6 },
-      { points: 10, weight: 0.4 }
-    ],
-    B: [
-      // 기본 — EV 1.54P
-      { points: 1, weight: 80 },
-      { points: 2, weight: 12 },
-      { points: 5, weight: 6 },
-      { points: 10, weight: 2 }
-    ],
-    H: [
-      // 고eCPM — EV 2.28P
-      { points: 1, weight: 62 },
-      { points: 2, weight: 18 },
-      { points: 5, weight: 14 },
-      { points: 10, weight: 6 }
-    ]
+    L: [{ points: 12, weight: 1 }],
+    // 저eCPM
+    B: [{ points: 15, weight: 1 }],
+    // 기본
+    H: [{ points: 23, weight: 1 }]
+    // 고eCPM
   },
   preset: "B",
   rewardKillSwitch: false,
-  // 랭키 탭 10회 만충 → 광고 → 상자(공용 테이블). 하루 2회.
+  // 랭키 탭 10회 만충 → 광고 → 에너지 보상(고정). 하루 2회.
   energyTapsToFull: 10,
   energyDailyMax: 2,
-  // 알림 동의 10P (캡 제외, 광고 없음, 1회성).
+  // 알림 동의 100코인 (캡 제외, 광고 없음, 1회성).
   // ⚠️ templateCode는 앱인토스 콘솔에서 알림 템플릿을 만들어야 나온다. 미발급이라 빈 문자열 —
   //    비어 있으면 홈이 알림 카드를 렌더하지 않는다(없는 기능을 광고하지 않기 위함).
   //    "무광고 지급"의 정책 적합성은 채널톡 확인 대기 항목이다(공통요소 v5.1 §10).
-  notiConsentReward: 10,
+  notiConsentReward: 100,
   notiTemplateCode: "",
-  // 출석은 **광고 없이** 1P, 7일 연속 +5P (기획자 2차 지시 a "광고 없이" 유지 + v5 금액).
+  // 출석은 **광고 없이** 10코인, 7일 연속 +50코인.
   // 무광고 장치라 하루 광고 한도 계산에 들어가지 않는다.
-  attendReward: 1,
-  attendStreakBonus: 5,
-  // 복권 — EV 약 1.9P. 잭팟만 타임 캡에서 제외된다(공통요소 v5.1 §2-2).
+  attendReward: 10,
+  attendStreakBonus: 50,
+  // 랭키 복권 — **비활성**. 확률형(잭팟 0.05%)이라 게임 앱 프로모션과 결합 불가.
+  // 0이면 홈 타일·복권 화면 진입이 사라진다. 원격으로 켤 수 없게 PARAMS에서도 뺐다.
+  // 테이블은 코드 호환용으로만 남긴다(재활성은 정책 확인 후 번들 수정으로).
   lotteryTable: [
-    { points: 1, weight: 85, tier: "small" },
-    { points: 3, weight: 10, tier: "small" },
-    { points: 10, weight: 4.95, tier: "mid" },
-    { points: 500, weight: 0.05, tier: "jackpot" }
+    { points: 10, weight: 85, tier: "small" },
+    { points: 30, weight: 10, tier: "small" },
+    { points: 100, weight: 4.95, tier: "mid" },
+    { points: 5e3, weight: 0.05, tier: "jackpot" }
   ],
-  lotteryDailyMax: 1,
-  // 일 단위 리셋(게임 슬롯·에너지·출석·복권)은 아침 타임 시작에 맞춘다.
+  lotteryDailyMax: 0,
+  // 일 단위 리셋(게임 슬롯·에너지·출석)은 아침 타임 시작에 맞춘다.
   dayBoundaryHour: 5,
   // ── 광고 프리퀀시 (기획자 2·3차 지시, v5 회신 1·2번 "현행 유지") ──
-  // 하루 5종 선점 × 난이도 3 × 1판 = 게임 15판. 기회는 상자2 + 타임3 + 복권1 + 게임15 = 21,
-  // 실제 광고 시청은 하루 20회로 묶는다(마지막 1개는 광고 **전에** adLimit으로 차단).
+  // 하루 5종 선점 × 난이도 3 × 1판 = 게임 15판. 기회는 상자2 + 타임3 + 게임15 = 20(복권 비활성),
+  // 실제 광고 시청은 하루 20회로 묶는다(초과분은 광고 **전에** adLimit으로 차단).
   gamePicksPerDay: 5,
   adsDailyMax: 20,
   dailySlotsPerDifficulty: 1,
-  // ── 전환·지갑 ──
+  // ── 전환·지갑 (코인 단위) ──
   // 차감률 40% **고정**(포인트경제성 v1.3 §2 "30~50% 랜덤 폐기", 공통요소 v5.1 §2-4 "랜덤 차감 금지").
-  // 구 결정(랜덤 35~50%를 심사 논리로 유지)은 기획자 v5 지시로 대체됐다.
   hostShareRate: 0.4,
-  minConvertPoint: 50,
-  // 문서는 500P(잭팟만 예외 적립)이지만 1000P로 둔다(v5 회신 4번) — 잭팟 500P를 잘림 없이 받기 위함.
-  maxBalance: 1e3
+  // 500코인 = 토스 포인트 30원부터
+  minConvertPoint: 500,
+  // 10,000코인 — 1회 전환 한도(350원 = 약 5,834코인)를 넘는 여유를 둔다.
+  maxBalance: 1e4
 };
 export {
   PORTAL_ENGAGEMENT as BUNDLE_DEFAULTS,

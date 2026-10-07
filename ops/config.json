@@ -1,11 +1,11 @@
 {
   "schema": 1,
-  "rev": 3,
+  "rev": 4,
   "current": {
     "values": {
       "rewardKillSwitch": false
     }
   },
   "pending": null,
-  "updatedAt": "2026-10-04T10:36:20.279Z"
+  "updatedAt": "2026-10-07T00:00:00+09:00"
 }
