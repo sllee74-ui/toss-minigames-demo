@@ -12,7 +12,7 @@ const checkRev = !process.argv.includes('--no-rev');
 let failed = false;
 const fail = (m) => { console.error('✖ ' + m); failed = true; };
 
-for (const file of ['ops/config.json', 'ops/config-test.json']) {
+for (const file of ['ops/config.json']) {
   let raw;
   try { raw = JSON.parse(readFileSync(file, 'utf8')); } catch (e) { fail(`${file}: JSON 문법 오류 — ${e.message}`); continue; }
 

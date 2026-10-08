@@ -30,13 +30,9 @@
   button.primary { background: var(--green); color: #fff; }
   button.danger { background: var(--red); border-color: var(--red); color: #fff; }
   button:disabled { opacity: .45; cursor: default; }
-  .tabs { display: flex; gap: 6px; }
-  .tabs button { border-radius: 999px; padding: 6px 14px; }
-  .tabs button.on { background: var(--green); color: #fff; }
   .badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 7px; vertical-align: 1px; }
   .b-day { background: var(--green-bg); color: var(--green-d); }
   .b-now { background: var(--red-bg); color: var(--red); }
-  .b-test { background: var(--amber-bg); color: var(--amber); }
   .param { border-top: 1px solid var(--line); padding: 14px 0; }
   .param:first-of-type { border-top: 0; }
   .param .head { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
@@ -75,7 +71,7 @@
       <li><b>대부분의 값은 "다음 날 05:00"부터 적용됩니다</b><span class="badge b-day">일 단위</span>. 하루 중간에 캡·횟수·보상 금액이 바뀌면 같은 날 유저마다 규칙이 달라지기 때문입니다. 앱은 그날 처음 연 시점의 값을 05:00까지 고정합니다.</li>
       <li><b>즉시 적용은 "적립 일시 중단" 하나뿐입니다</b><span class="badge b-now">즉시</span>. 긴급 정지용입니다.</li>
       <li><b>전파 시간</b>: 저장 → 배포 1~2분 → 인터넷 캐시 최대 10분 → 유저가 앱을 새로 열거나 다른 앱에 갔다 돌아올 때 반영됩니다.</li>
-      <li><b>라이브 / 테스트</b>: <span class="badge b-test">테스트</span> 문서는 QR 테스트 빌드만 읽습니다. 실험은 테스트에서 먼저 하세요. 라이브 유저에게는 영향이 없습니다.</li>
+      <li><b>설정 문서는 하나입니다.</b> 출시 빌드·점검 빌드 모두 이 페이지의 값을 읽습니다. 저장하면 <b>실제 유저에게 그대로</b> 적용되니, 아래 "예상 경제성"으로 먼저 확인하세요. (예전의 테스트 문서는 저장 위치 혼동으로 변경이 반영되지 않는 사고가 있어 2026-10-08 폐지했습니다.)</li>
       <li>모든 저장은 기록이 남습니다(<a id="historyLink" target="_blank" rel="noopener">변경 이력</a> · <a id="actionsLink" target="_blank" rel="noopener">배포 상태</a>). 되돌리려면 예전 값을 다시 저장하면 됩니다.</li>
     </ul>
   </div>
@@ -108,10 +104,7 @@
   <!-- 문서 선택 + 상태 -->
   <div class="card">
     <div class="row">
-      <div class="tabs">
-        <button id="tabLive" class="on">라이브 (config.json)</button>
-        <button id="tabTest">테스트 (config-test.json)</button>
-      </div>
+      <b>운영 설정 (config.json)</b>
       <span class="sub grow" id="docMeta">불러오는 중…</span>
       <button id="btnReload">새로 고침</button>
     </div>
@@ -307,7 +300,7 @@ const GROUPS = ['보상', '캡·횟수', '고정 보상', '전환·지갑'];
 const DAY_PARAMS = PARAMS.filter((p) => p.apply === 'day');
 
 // ── 상태 ──
-let file = 'config.json';
+const file = 'config.json'; // 문서는 하나 — 출시·점검 빌드가 모두 읽는다
 let doc = null;      // 저장소의 원문 (검증 통과본)
 let sha = null;      // Contents API 동시편집 감지용
 let token = sessionStorage.getItem('portalConfigToken') || '';
@@ -366,7 +359,7 @@ function pickRemote(o) { const out = {}; for (const p of PARAMS) out[p.key] = o[
 
 function render() {
   const now = effectiveNow();
-  $('docMeta').innerHTML = `rev <b>${doc.rev}</b> · 마지막 저장 ${doc.updatedAt ? new Date(doc.updatedAt).toLocaleString('ko-KR') : '-'}${file === 'config-test.json' ? ' · <span class="badge b-test">테스트 문서</span>' : ''}${token ? '' : ' · <b>읽기 전용</b>(토큰 없음)'}`;
+  $('docMeta').innerHTML = `rev <b>${doc.rev}</b> · 마지막 저장 ${doc.updatedAt ? new Date(doc.updatedAt).toLocaleString('ko-KR') : '-'}${token ? '' : ' · <b>읽기 전용</b>(토큰 없음)'}`;
   $('killNow').textContent = now.rewardKillSwitch ? '⏸ 중단 중' : '▶ 정상 적립';
   $('killNow').style.color = now.rewardKillSwitch ? 'var(--red)' : 'var(--green-d)';
 
@@ -616,8 +609,6 @@ $('btnLogin').onclick = async () => {
   loadDoc();
 };
 $('btnLogout').onclick = () => { token = ''; sessionStorage.removeItem('portalConfigToken'); setTokenUi(); loadDoc(); };
-$('tabLive').onclick = () => { file = 'config.json'; $('tabLive').classList.add('on'); $('tabTest').classList.remove('on'); loadDoc(); };
-$('tabTest').onclick = () => { file = 'config-test.json'; $('tabTest').classList.add('on'); $('tabLive').classList.remove('on'); loadDoc(); };
 $('btnReload').onclick = loadDoc;
 $('btnKillOn').onclick = () => setKill(true);
 $('btnKillOff').onclick = () => setKill(false);

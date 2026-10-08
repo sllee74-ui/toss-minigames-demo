@@ -31,7 +31,7 @@ jobs:
         run: |
           git config user.name "ops-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout HEAD~1 -- ops/config.json ops/config-test.json
+          git checkout HEAD~1 -- ops/config.json
           node ops/scripts/validate.mjs --no-rev
           git commit -m "ops: 검증 실패한 설정 문서를 직전 정상본으로 자동 복구"
           git push
