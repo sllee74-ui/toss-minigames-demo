@@ -3,8 +3,8 @@
 // packages/shared/src/engagement/remote-core.ts
 var PARAMS = [
   { key: "rewardKillSwitch", type: "bool", apply: "instant" },
-  { key: "preset", type: "enum", values: ["L", "B", "H"], apply: "day" },
-  { key: "slotCap", type: "int", min: 50, max: 500, apply: "day" },
+  { key: "rewardCoins", type: "int", min: 5, max: 100, apply: "day" },
+  { key: "slotCap", type: "int", min: 50, max: 1e3, apply: "day" },
   { key: "adsDailyMax", type: "int", min: 5, max: 30, apply: "day" },
   { key: "gamePicksPerDay", type: "int", min: 1, max: 11, apply: "day" },
   { key: "dailySlotsPerDifficulty", type: "int", min: 1, max: 3, apply: "day" },
@@ -127,17 +127,9 @@ var PORTAL_ENGAGEMENT = {
   ],
   // 타임당 150코인 소프트 캡 × 3타임 = 일 450코인. 액션 시작 시 캡 미만이면 보상 전액 지급(한 번의 보상만큼 넘칠 수 있음).
   slotCap: 150,
-  // 공용 고정 보상 — 게임 한 판·타임 보너스·에너지 상자가 같은 금액을 준다.
-  // (구 변동 테이블 평균 1.16/1.54/2.28P × 10을 반올림 — 경제성 동일, 랜덤 제거)
-  rewardPresets: {
-    L: [{ points: 12, weight: 1 }],
-    // 저eCPM
-    B: [{ points: 15, weight: 1 }],
-    // 기본
-    H: [{ points: 23, weight: 1 }]
-    // 고eCPM
-  },
-  preset: "B",
+  // 공용 고정 보상 — 게임 한 판·타임 보너스·에너지 보상이 같은 금액을 준다(별 15개 = 1.5원).
+  // eCPM 2,000원·목표 지급률 50% 역산값(≈17)보다 약간 낮게. 원격 `rewardCoins`로 덮는다.
+  rewardCoins: 15,
   rewardKillSwitch: false,
   // 랭키 탭 10회 만충 → 광고 → 에너지 보상(고정). 하루 2회.
   energyTapsToFull: 10,

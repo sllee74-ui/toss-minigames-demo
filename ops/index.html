@@ -148,9 +148,13 @@
     <div class="row" style="margin-bottom:8px">
       <span class="sub">가정 리워드 eCPM</span>
       <input type="number" id="ecpm" value="2000" min="500" max="20000" step="100"> <span class="sub">원</span>
+      <span class="sub" style="margin-left:12px">목표 지급률</span>
+      <input type="number" id="target" value="50" min="10" max="90" step="5"> <span class="sub">%</span>
+      <button id="btnRecommend" style="margin-left:12px">권장값 채우기</button>
     </div>
+    <p class="sub" id="recommendText" style="margin:0 0 8px"></p>
     <table class="est" id="est"></table>
-    <p class="sub">추정치입니다. 광고를 한도까지 모두 본다고 가정합니다(보상은 고정 금액). 기획 문서의 목표 지급률은 <b>50%</b>, 100%를 넘으면 역마진입니다.</p>
+    <p class="sub">추정치입니다. 광고를 한도까지 모두 본다고 가정합니다(보상은 고정 금액). 기획 문서의 목표 지급률은 <b>50%</b>, <b>60%를 넘으면 경고</b>, <b>100%를 넘으면 저장할 수 없습니다</b>(역마진). eCPM·목표 지급률은 이 브라우저에만 기억되는 계산용 값이고 앱에는 가지 않습니다.</p>
   </div>
 
   <!-- 저장 -->
@@ -210,14 +214,13 @@ document.getElementById('actionsLink').href = `https://github.com/${OWNER}/${REP
 
 // ── 항목 설명 (제약의 이유를 함께 적는다) ──
 const META = {
-  preset: {
-    label: '보상 금액 (프리셋)', group: '보상',
-    help: `<p>게임 한 판·타임 보너스·에너지 보상이 <b>공통으로</b> 주는 <b>고정 금액</b>을 고릅니다.</p>
-      <ul><li><b>L</b> — 별 12개 (1.2원)</li>
-      <li><b>B</b> — 별 15개 (1.5원) · 기본</li>
-      <li><b>H</b> — 별 23개 (2.3원)</li></ul>
-      <p>역산 공식(포인트경제성 핸드오프 §2) 기준 권장: 리워드 eCPM <b>1,850원 미만 L · 1,850~2,750원 B · 2,750원 이상 H</b>. 하루에 한 단계씩만 옮기는 것을 권합니다.</p>
-      <p><b>왜 고정 금액인가</b>: 앱인토스 정책상 게임 앱은 룰렛·뽑기 같은 확률형 보상을 토스 포인트 프로모션과 결합할 수 없습니다. 그래서 금액표 자체는 앱에 고정돼 있고 여기서는 선택만 합니다. 게임 화면의 "별 15개" 같은 금액 표기는 선택에 따라 자동으로 바뀝니다. 같은 날 오전·오후 금액이 달라지지 않도록 <b>다음 날 05:00</b>부터 적용됩니다.</p>`,
+  rewardCoins: {
+    label: '광고 1회 보상', unit: '개', group: '보상',
+    help: `<p>게임 한 판·타임 보너스·에너지 보상이 <b>공통으로</b> 주는 <b>고정 금액</b>(별 개수)입니다. 별 10개 = 토스 포인트 1원.</p>
+      <ul><li><b>정하는 법</b>: 아래 "예상 경제성"에 가정 eCPM과 목표 지급률을 넣고 <b>권장값 채우기</b>를 누르세요. 식: 보상 ≈ 지급률 × eCPM ÷ 1000 × 10 ÷ (1 − 차감률). (차감 40%면 지급률 × eCPM ÷ 60)</li>
+      <li>범위 <b>별 5~100개</b>: eCPM 10,000원·지급률 60%까지 대응합니다. 하루 지급 총액은 보상 크기와 무관하게 <b>타임당 적립 상한</b>이 묶습니다 — 보상을 크게 올리면 상한도 같이 올려야 광고 20회를 다 볼 수 있습니다(권장값 채우기가 함께 맞춥니다).</li>
+      <li><b>내리는 것은 유저에게 불리한 변경</b>이라 적용일 전까지 앱에 사전 고지됩니다. 하루에 크게 바꾸지 말고 단계적으로 옮기길 권합니다.</li></ul>
+      <p><b>확률형은 여전히 불가</b>: 게임 앱은 룰렛·뽑기 같은 확률형 보상을 토스 포인트 프로모션과 결합할 수 없어, 금액은 늘 하나로 고정입니다. 게임 화면의 "별 15개" 같은 표기는 자동으로 바뀝니다. 같은 날 금액이 달라지지 않도록 <b>다음 날 05:00</b>부터 적용됩니다.</p>`,
   },
   slotCap: {
     label: '타임당 적립 상한', unit: '개', group: '캡·횟수',
@@ -471,38 +474,77 @@ function onInput() {
   $('diffBox').innerHTML = keys.length
     ? `<div class="diff">${keys.map((k) => `${META[k]?.label ?? k}: ${fmt(k, now[k])} → ${fmt(k, ch[k])}`).join('\n')}</div>`
     : '<p class="sub">바뀐 값이 없습니다.</p>';
-  $('btnReview').disabled = !token || bad || !keys.length;
   $('confirmBox').hidden = true;
   renderEstimate();
+  // 역마진(지급률 100% 초과)은 저장 불가 — 운영자 eCPM 가정 기준의 오타 방지(방어선은 앱 범위)
+  $('btnReview').disabled = !token || bad || !keys.length || lastRatio > 1;
 }
 
 // ── 예상 경제성 ──
-function ev(table) { const w = table.reduce((s, t) => s + t.weight, 0); return table.reduce((s, t) => s + t.points * t.weight, 0) / w; }
-function renderEstimate() {
-  const v = { ...effectiveNow() };
-  for (const p of DAY_PARAMS) { const x = readInput(p.key); if (x === x) v[p.key] = x; } // NaN 제외
-  const ecpm = Number($('ecpm').value) || 2000;
-  const perWon = 10; // 별 10개 = 토스 포인트 1원 (앱 고정)
-  const presetEv = ev(BUNDLE_DEFAULTS.rewardPresets[v.preset] ?? BUNDLE_DEFAULTS.rewardPresets.B);
+let lastRatio = 0; // 저장 게이트(100% 초과 차단)용
+const PER_WON = 10; // 별 10개 = 토스 포인트 1원 (앱 고정)
+/** 입력 중인 값 기준 광고 시청 수·기회 */
+function adsOf(v) {
   const gamePlays = v.gamePicksPerDay * 3 * v.dailySlotsPerDifficulty;
   const opportunities = gamePlays + 3 + v.energyDailyMax;
-  const ads = Math.min(v.adsDailyMax, opportunities);
+  return { gamePlays, opportunities, ads: Math.min(v.adsDailyMax, opportunities) };
+}
+function inputValues() {
+  const v = { ...effectiveNow() };
+  for (const p of DAY_PARAMS) { const x = readInput(p.key); if (x === x) v[p.key] = x; } // NaN 제외
+  return v;
+}
+/** 권장값 — 보상 = 지급률 × eCPM/1000 × 10 ÷ (1 − 차감률), 타임 상한 = 하루 광고 보상의 1.5배 ÷ 3(타임 쏠림 여유) */
+function recommend(v, ecpm, target) {
+  const pr = PARAMS.find((p) => p.key === 'rewardCoins');
+  const pc = PARAMS.find((p) => p.key === 'slotCap');
+  const reward = Math.min(pr.max, Math.max(pr.min, Math.round(target * ecpm / 1000 * PER_WON / (1 - v.hostShareRate))));
+  const cap = Math.min(pc.max, Math.max(pc.min, Math.ceil(1.5 * adsOf(v).ads * reward / 3 / 10) * 10));
+  return { reward, cap };
+}
+function readCalc() {
+  const ecpm = Number($('ecpm').value) || 2000;
+  const target = (Number($('target').value) || 50) / 100;
+  return { ecpm, target };
+}
+function renderEstimate() {
+  const v = inputValues();
+  const { ecpm, target } = readCalc();
+  const { gamePlays, opportunities, ads } = adsOf(v);
+  const reward = v.rewardCoins;
   const attend = v.attendReward + v.attendStreakBonus / 7;
-  const raw = ads * presetEv + attend;
+  const raw = ads * reward + attend;
   const capDaily = v.slotCap * 3;
-  const earn = Math.min(raw, capDaily + presetEv * 3);
-  const paid = earn * (1 - v.hostShareRate) / perWon;
+  const earn = Math.min(raw, capDaily + reward * 3);
+  const paid = earn * (1 - v.hostShareRate) / PER_WON;
   const revenue = ads * ecpm / 1000;
   const ratio = revenue ? paid / revenue : 0;
+  lastRatio = ratio;
+  const adsToCap = reward ? Math.ceil(capDaily / reward) : Infinity;
+  // 최악: 보상 크기와 무관하게 타임 상한(+타임당 1회 초과 + 출석 보상 1회 초과)이 하루 지급을 묶는다
+  const worst = (capDaily + reward * 3 + v.attendReward + v.attendStreakBonus) * (1 - v.hostShareRate) / PER_WON;
   const color = ratio > 1 ? 'var(--red)' : ratio > 0.6 ? 'var(--amber)' : 'var(--green-d)';
   $('est').innerHTML = `
     <tr><td>광고 기회 (게임 ${gamePlays} + 타임 3 + 에너지 ${v.energyDailyMax})</td><td>${opportunities}회</td></tr>
     <tr><td>실제 시청 (하루 한도 ${v.adsDailyMax}회 적용)</td><td>${ads}회</td></tr>
-    <tr><td>광고 1회 보상 (프리셋 ${v.preset}, 고정)</td><td>별 ${presetEv}개</td></tr>
+    <tr><td>광고 1회 보상 (고정)</td><td>별 ${reward}개</td></tr>
     <tr><td>하루 적립 (타임 상한 별 ${capDaily.toLocaleString()}개 적용)</td><td>별 ${Math.round(earn).toLocaleString()}개</td></tr>
     <tr><td>실지급 (차감 ${Math.round(v.hostShareRate * 100)}% 후, 별 10개 = 1원)</td><td>${paid.toFixed(1)}원</td></tr>
     <tr><td>광고수익 (eCPM ${ecpm.toLocaleString()}원 가정)</td><td>${revenue.toFixed(1)}원</td></tr>
-    <tr><td><b>지급률</b> (실지급 ÷ 광고수익 · 목표 50%)</td><td style="color:${color}">${Math.round(ratio * 100)}%</td></tr>`;
+    <tr><td><b>지급률</b> (실지급 ÷ 광고수익 · 목표 ${Math.round(target * 100)}%)</td><td style="color:${color}">${Math.round(ratio * 100)}%</td></tr>
+    <tr><td>참고: 유저 1명 하루 최대 지급 (상한 기준 최악)</td><td>${worst.toFixed(0)}원</td></tr>`
+    + (adsToCap < ads ? `<tr><td colspan="2" style="color:var(--amber)">⚠ 타임 상한에 광고 ${adsToCap}회 만에 닿습니다 — 유저가 광고를 ${ads}회 다 보지 않게 됩니다. 타임당 적립 상한을 올리세요(권장값 채우기).</td></tr>` : '')
+    + (ratio > 1 ? `<tr><td colspan="2" style="color:var(--red)"><b>지급률 100% 초과 — 역마진이라 저장할 수 없습니다.</b></td></tr>`
+      : ratio > 0.6 ? `<tr><td colspan="2" style="color:var(--amber)">⚠ 지급률이 60%를 넘습니다. eCPM 가정이 실측과 맞는지 확인하세요.</td></tr>` : '');
+  const rec = recommend(v, ecpm, target);
+  $('recommendText').innerHTML = `권장: 광고 1회 보상 <b>별 ${rec.reward}개</b> · 타임당 적립 상한 <b>별 ${rec.cap}개</b> (eCPM ${ecpm.toLocaleString()}원 · 지급률 ${Math.round(target * 100)}% · 차감 ${Math.round(v.hostShareRate * 100)}% 기준)`;
+}
+function applyRecommend() {
+  const { ecpm, target } = readCalc();
+  const rec = recommend(inputValues(), ecpm, target);
+  inputs.rewardCoins.value = rec.reward;
+  inputs.slotCap.value = rec.cap;
+  onInput();
 }
 
 // ── 저장 ──
@@ -560,6 +602,7 @@ function review() {
   const unfav = [];
   if ('hostShareRate' in ch && ch.hostShareRate > now.hostShareRate) unfav.push('차감률 인상');
   if ('minConvertPoint' in ch && ch.minConvertPoint > now.minConvertPoint) unfav.push('최소 전환 상향');
+  if ('rewardCoins' in ch && ch.rewardCoins < now.rewardCoins) unfav.push('광고 보상 인하');
   $('confirmText').innerHTML = `<b>${date} 05:00(한국 시간)</b>부터 적용합니다.<div class="diff" style="margin-top:6px">${Object.keys(ch).map((k) => `${META[k]?.label ?? k}: ${fmt(k, now[k])} → ${fmt(k, ch[k])}`).join('\n')}</div>${warn}${unfav.length ? `<p>유저에게 불리한 변경(${unfav.join(', ')})은 적용일 전까지 앱 전환 화면에 자동으로 사전 고지됩니다.</p>` : ''}`;
   $('confirmBox').hidden = false;
 }
@@ -616,7 +659,15 @@ $('btnReview').onclick = review;
 $('btnCancelReview').onclick = () => { $('confirmBox').hidden = true; };
 $('btnSave').onclick = save;
 $('btnResetInputs').onclick = render;
-$('ecpm').addEventListener('input', renderEstimate);
+// eCPM·목표 지급률은 계산용 — 이 브라우저에만 기억한다(앱에 가지 않는 값)
+for (const id of ['ecpm', 'target']) {
+  try { const saved = localStorage.getItem('portalCalc.' + id); if (saved) $(id).value = saved; } catch { /* 저장소 차단 */ }
+  $(id).addEventListener('input', () => {
+    try { localStorage.setItem('portalCalc.' + id, $(id).value); } catch { /* 저장소 차단 */ }
+    if (doc) onInput(); else renderEstimate();
+  });
+}
+$('btnRecommend').onclick = () => { if (doc) applyRecommend(); };
 
 setTokenUi();
 loadDoc();
