@@ -1,19 +1,20 @@
 {
   "schema": 1,
-  "rev": 5,
+  "rev": 6,
   "current": {
     "values": {
-      "rewardKillSwitch": false
-    }
-  },
-  "pending": {
-    "effectiveDate": "2026-10-11",
-    "values": {
+      "rewardKillSwitch": false,
       "rewardCoins": 35,
       "slotCap": 350,
       "energyDailyMax": 3,
       "notiConsentReward": 300
     }
   },
-  "updatedAt": "2026-10-09T23:38:44.912Z"
+  "pending": {
+    "effectiveDate": "2026-10-12",
+    "values": {
+      "energyDailyMax": 2
+    }
+  },
+  "updatedAt": "2026-10-10T22:41:29.088Z"
 }
